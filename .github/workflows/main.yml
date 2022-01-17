@@ -39,7 +39,11 @@ jobs:
           sudo mv -f src/* .
           sudo npm install denoify
           sudo npx denoify
+          echo "ls -la----------------"
+          pwd
           ls -la
+          echo "ls -la deno_dist----------------"
+          pwd
           ls deno_dist
           cd ..
 
@@ -56,6 +60,8 @@ jobs:
           sudo rm -rf **/*.ts
           ls ../cockatiel/deno_dist
           sudo cp -r ../cockatiel/deno_dist/* .
+          echo "ls -la----------------"
+          pwd
           ls -la
           
       - uses: stefanzweifel/git-auto-commit-action@v4
