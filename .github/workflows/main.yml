@@ -39,6 +39,8 @@ jobs:
           sudo mv -f src/* .
           sudo npm install denoify
           sudo npx denoify
+          ls -la
+          ls deno_dist
           cd ..
 
           
@@ -52,6 +54,7 @@ jobs:
         run: |
           cd myrepo
           sudo rm -rf **/*.ts
+          ls ../cockatiel/deno_dist
           sudo cp -r ../cockatiel/deno_dist/* .
           ls -la
           
