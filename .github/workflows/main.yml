@@ -35,7 +35,7 @@ jobs:
       - name: Access cloned repository content
         run: |
           cd cockatiel
-          git describe --tags --abbrev=0 >> src/tag
+          sudo git describe --tags --abbrev=0 >> src/tag
           sudo mv src/index.ts src/mod.ts
           sudo npm install
           sudo npm install denoify
