@@ -35,6 +35,7 @@ jobs:
       - name: Access cloned repository content
         run: |
           cd cockatiel
+          export COCKATIEL_TAG=$(git describe --tags --abbrev=0)
           sudo mv src/index.ts src/mod.ts
           sudo npm install
           sudo npm install denoify
@@ -67,4 +68,5 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
           repository: 'myrepo'
+          tagging_message: $COCKATIEL_TAG
           
