@@ -53,6 +53,7 @@ jobs:
           cd myrepo
           sudo rm -rf **/*.ts
           sudo cp -r ../cockatiel/deno_dist/* .
+          ls -la
           
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
