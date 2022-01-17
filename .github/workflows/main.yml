@@ -55,4 +55,6 @@ jobs:
           sudo cp -r ../cockatiel/deno_dist/* .
           
       - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          repository: 'myrepo'
           
