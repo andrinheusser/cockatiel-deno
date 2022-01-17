@@ -35,8 +35,8 @@ jobs:
       - name: Access cloned repository content
         run: |
           cd cockatiel
-          mv src/index.ts src/mod.ts
-          mv -f src/* .
+          sudo mv src/index.ts src/mod.ts
+          sudo mv -f src/* .
           npm install denoify
           denoify
 
