@@ -36,7 +36,7 @@ jobs:
         run: |
           cd cockatiel
           sudo mv src/index.ts src/mod.ts
-          sudo mv -f src/* .
+          sudo npm install
           sudo npm install denoify
           sudo npx denoify
           echo "ls -la----------------"
