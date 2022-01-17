@@ -37,7 +37,7 @@ jobs:
           cd cockatiel
           sudo mv src/index.ts src/mod.ts
           sudo mv -f src/* .
-          npm install denoify
+          sudo npm install denoify
           denoify
 
           
