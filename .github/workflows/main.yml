@@ -30,14 +30,14 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: '14'
-        run: |
-          npm install denoify
+          
         
       - name: Access cloned repository content
         run: |
           cd cockatiel
           mv src/index.ts src/mod.ts
           mv -f src/* .
+          npm install denoify
           denoify
 
           
