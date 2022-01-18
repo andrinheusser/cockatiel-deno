@@ -1,7 +1,7 @@
 import { expect } from 'chai DENOIFY: DEPENDENCY UNMET (DEV DEPENDENCY)';
 import { stub } from 'sinon DENOIFY: DEPENDENCY UNMET (DEV DEPENDENCY)';
-import { CancellationToken, CancellationTokenSource } from '../CancellationToken.ts';
 import { TaskCancelledError } from '../errors/TaskCancelledError.ts';
+import { abortedSignal } from './abort.ts';
 import { Event, EventEmitter, MemorizingEventEmitter } from './Event.ts';
 
 describe('Event', () => {
@@ -78,16 +78,16 @@ describe('Event', () => {
 
   it('cancels conversion to promise', async () => {
     const emitter = new EventEmitter<number>();
-    const cts = new CancellationTokenSource();
-    setTimeout(() => cts.cancel(), 1);
-    const v = Event.toPromise(emitter.addListener, cts.token);
+    const cts = new AbortController();
+    setTimeout(() => cts.abort(), 1);
+    const v = Event.toPromise(emitter.addListener, cts.signal);
     await expect(v).to.eventually.be.rejectedWith(TaskCancelledError);
     expect(emitter.size).to.equal(0);
   });
 
   it('cancels conversion to promise sync', async () => {
     const emitter = new EventEmitter<number>();
-    const v = Event.toPromise(emitter.addListener, CancellationToken.Cancelled);
+    const v = Event.toPromise(emitter.addListener, abortedSignal);
     await expect(v).to.eventually.be.rejectedWith(TaskCancelledError);
     expect(emitter.size).to.equal(0);
   });

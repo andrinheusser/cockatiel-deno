@@ -1,6 +1,5 @@
 import { IBreaker } from './breaker/Breaker.ts';
 import { BulkheadPolicy } from './BulkheadPolicy.ts';
-import { CancellationToken } from './CancellationToken.ts';
 import { CircuitBreakerPolicy } from './CircuitBreakerPolicy.ts';
 import { Event } from './common/Event.ts';
 import { ExecuteWrapper } from './common/Executor.ts';
@@ -60,10 +59,10 @@ export interface ISuccessEvent {
 
 export interface IDefaultPolicyContext {
   /**
-   * Cancellation token for the operation. This is propagated through multiple
+   * Abort signal for the operation. This is propagated through multiple
    * retry policies.
    */
-  cancellationToken: CancellationToken;
+  signal: AbortSignal;
 }
 
 /**
@@ -72,7 +71,7 @@ export interface IDefaultPolicyContext {
  */
 export interface IPolicy<
   ContextType extends IDefaultPolicyContext = IDefaultPolicyContext,
-  AltReturn = never
+  AltReturn = never,
 > {
   /**
    * Fires on the policy when a request successfully completes and some
@@ -92,7 +91,7 @@ export interface IPolicy<
    */
   execute<T>(
     fn: (context: ContextType) => PromiseLike<T> | T,
-    cancellationToken?: CancellationToken,
+    signal?: AbortSignal,
   ): Promise<T | AltReturn>;
 }
 
@@ -153,18 +152,18 @@ export class Policy {
   public static wrap<A extends IPolicy<IDefaultPolicyContext, unknown>>(p1: A): PolicyType<A>;
   public static wrap<
     A extends IPolicy<IDefaultPolicyContext, unknown>,
-    B extends IPolicy<IDefaultPolicyContext, unknown>
+    B extends IPolicy<IDefaultPolicyContext, unknown>,
   >(p1: A, p2: B): MergePolicies<PolicyType<A>, PolicyType<B>>;
   public static wrap<
     A extends IPolicy<IDefaultPolicyContext, unknown>,
     B extends IPolicy<IDefaultPolicyContext, unknown>,
-    C extends IPolicy<IDefaultPolicyContext, unknown>
+    C extends IPolicy<IDefaultPolicyContext, unknown>,
   >(p1: A, p2: B, p3: C): MergePolicies<PolicyType<C>, MergePolicies<PolicyType<A>, PolicyType<B>>>;
   public static wrap<
     A extends IPolicy<IDefaultPolicyContext, unknown>,
     B extends IPolicy<IDefaultPolicyContext, unknown>,
     C extends IPolicy<IDefaultPolicyContext, unknown>,
-    D extends IPolicy<IDefaultPolicyContext, unknown>
+    D extends IPolicy<IDefaultPolicyContext, unknown>,
   >(
     p1: A,
     p2: B,
@@ -179,7 +178,7 @@ export class Policy {
     B extends IPolicy<IDefaultPolicyContext, unknown>,
     C extends IPolicy<IDefaultPolicyContext, unknown>,
     D extends IPolicy<IDefaultPolicyContext, unknown>,
-    E extends IPolicy<IDefaultPolicyContext, unknown>
+    E extends IPolicy<IDefaultPolicyContext, unknown>,
   >(
     p1: A,
     p2: B,
@@ -200,15 +199,12 @@ export class Policy {
     return {
       onFailure: p[0].onFailure,
       onSuccess: p[0].onSuccess,
-      execute<T>(
-        fn: (context: C) => PromiseLike<T> | T,
-        cancellationToken: CancellationToken,
-      ): Promise<T | A> {
+      execute<T>(fn: (context: C) => PromiseLike<T> | T, signal: AbortSignal): Promise<T | A> {
         const run = (context: C, i: number): PromiseLike<T | A> | T | A =>
           i === p.length
             ? fn(context)
-            : p[i].execute(next => run({ ...context, ...next }, i + 1), context.cancellationToken);
-        return Promise.resolve(run({ cancellationToken } as C, 0));
+            : p[i].execute(next => run({ ...context, ...next }, i + 1), context.signal);
+        return Promise.resolve(run({ signal } as C, 0));
       },
     };
   }
@@ -303,8 +299,8 @@ export class Policy {
       }
 
       descriptor.value = function (this: unknown, ...args: any[]) {
-        const ct = args[args.length - 1] instanceof CancellationToken ? args.pop() : undefined;
-        return policy.execute(context => inner.apply(this, [...args, context]), ct);
+        const signal = args[args.length - 1] instanceof AbortSignal ? args.pop() : undefined;
+        return policy.execute(context => inner.apply(this, [...args, context]), signal);
       };
     };
   }
