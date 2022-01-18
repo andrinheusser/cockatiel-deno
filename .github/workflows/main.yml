@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Checkout
         run: |
-          git clone --depth=1 --branch 2.0.2 https://github.com/connor4312/cockatiel.git
+          git clone --depth=1 --branch v2.0.2 https://github.com/connor4312/cockatiel.git
           
       #- name: Clone Github Repo Action
         # You may pin to the exact commit or the version.
