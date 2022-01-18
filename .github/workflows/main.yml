@@ -17,15 +17,24 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: Clone Github Repo Action
+      - name: Checkout
+        uses: actions/checkout@v2.4.0
+        with:
+          repository: connor4312/cockatiel
+          ref: '2.0.2'
+          path: cockatiel
+          
+      #- name: Clone Github Repo Action
         # You may pin to the exact commit or the version.
         # uses: GuillaumeFalourd/clone-github-repo-action@d667f8c39e6ac1dd5309ad51b0020657c7a1a296
-        uses: GuillaumeFalourd/clone-github-repo-action@v1
-        with:
+        #uses: GuillaumeFalourd/clone-github-repo-action@v1
+        #with:
           # Repository Owner
-          owner: connor4312
+          #owner: connor4312
           # Repository name
-          repository: cockatiel
+          #repository: cockatiel
+
+      
         
       - uses: actions/setup-node@v2
         with:
