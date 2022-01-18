@@ -18,10 +18,10 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v2
         with:
           repository: connor4312/cockatiel
-          ref: '2.0.2'
+          ref: 2.0.2
           path: cockatiel
           
       #- name: Clone Github Repo Action
