@@ -1,4 +1,4 @@
-import { neverAbortedSignal } from './common/abort.ts';
+import { CancellationToken } from './CancellationToken.ts';
 import { ExecuteWrapper, returnOrThrow } from './common/Executor.ts';
 import { IDefaultPolicyContext, IPolicy } from './Policy.ts';
 
@@ -16,8 +16,8 @@ export class NoopPolicy implements IPolicy {
 
   public async execute<T>(
     fn: (context: IDefaultPolicyContext) => PromiseLike<T> | T,
-    signal: AbortSignal = neverAbortedSignal,
+    cancellationToken = CancellationToken.None,
   ): Promise<T> {
-    return returnOrThrow(await this.executor.invoke(fn, { signal }));
+    return returnOrThrow(await this.executor.invoke(fn, { cancellationToken }));
   }
 }

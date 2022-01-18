@@ -1,4 +1,4 @@
-import { deriveAbortController, waitForAbort } from './common/abort.ts';
+import { CancellationToken, CancellationTokenSource } from './CancellationToken.ts';
 import { EventEmitter } from './common/Event.ts';
 import { ExecuteWrapper, returnOrThrow } from './common/Executor.ts';
 import { TaskCancelledError } from './errors/TaskCancelledError.ts';
@@ -18,7 +18,11 @@ export enum TimeoutStrategy {
 }
 
 export interface ICancellationContext {
-  signal: AbortSignal;
+  /**
+   * @deprecated use `cancellationToken` instead
+   */
+  cancellation: CancellationToken;
+  cancellationToken: CancellationToken;
 }
 
 export class TimeoutPolicy implements IPolicy<ICancellationContext> {
@@ -67,38 +71,37 @@ export class TimeoutPolicy implements IPolicy<ICancellationContext> {
    * @throws a {@link TaskCancelledError} if a timeout occurs
    */
   public async execute<T>(
-    fn: (context: ICancellationContext, signal: AbortSignal) => PromiseLike<T> | T,
-    signal?: AbortSignal,
+    fn: (context: ICancellationContext, ct: CancellationToken) => PromiseLike<T> | T,
+    ct = CancellationToken.None,
   ): Promise<T> {
-    const aborter = deriveAbortController(signal);
-    const timer = setTimeout(() => aborter.abort(), this.duration);
+    const cts = new CancellationTokenSource(ct);
+    const timer = setTimeout(() => cts.cancel(), this.duration);
     if (this.unref) {
       timer.unref();
     }
 
-    const context = { signal: aborter.signal };
+    const context = { cancellation: cts.token, cancellationToken: cts.token };
 
-    const onCancelledListener = () => this.timeoutEmitter.emit();
-    aborter.signal.addEventListener('abort', onCancelledListener);
+    const onCancelledListener = cts.token.onCancellationRequested(() => this.timeoutEmitter.emit());
 
     try {
       if (this.strategy === TimeoutStrategy.Cooperative) {
-        return returnOrThrow(await this.executor.invoke(fn, context, aborter.signal));
+        return returnOrThrow(await this.executor.invoke(fn, context, cts.token));
       }
 
       return await this.executor
         .invoke(async () =>
           Promise.race<T>([
-            Promise.resolve(fn(context, aborter.signal)),
-            waitForAbort(aborter.signal).then(() => {
+            Promise.resolve(fn(context, cts.token)),
+            cts.token.cancellation(cts.token).then(() => {
               throw new TaskCancelledError(`Operation timed out after ${this.duration}ms`);
             }),
           ]),
         )
         .then(returnOrThrow);
     } finally {
-      aborter.signal.removeEventListener('abort', onCancelledListener);
-      aborter.abort();
+      onCancelledListener.dispose();
+      cts.cancel();
       clearTimeout(timer);
     }
   }

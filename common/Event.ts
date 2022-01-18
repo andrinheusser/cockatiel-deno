@@ -1,3 +1,4 @@
+import { CancellationToken } from '../CancellationToken.ts';
 import { TaskCancelledError } from '../errors/TaskCancelledError.ts';
 
 /**
@@ -45,28 +46,25 @@ export namespace Event {
    * Returns a promise that resolves when the event fires, or when cancellation
    * is requested, whichever happens first.
    */
-  export const toPromise = <T>(event: Event<T>, signal?: AbortSignal): Promise<T> => {
-    if (!signal) {
+  export const toPromise = <T>(event: Event<T>, cancellation?: CancellationToken): Promise<T> => {
+    if (!cancellation) {
       return new Promise<T>(resolve => once(event, resolve));
     }
 
-    if (signal.aborted) {
+    if (cancellation.isCancellationRequested) {
       return Promise.reject(new TaskCancelledError());
     }
 
     return new Promise((resolve, reject) => {
       const d2 = once(event, data => {
-        signal.removeEventListener('abort', d1);
+        d1.dispose();
         resolve(data);
       });
 
-      const d1 = () => {
+      const d1 = once(cancellation.onCancellationRequested, () => {
         d2.dispose();
-        signal.removeEventListener('abort', d1);
         reject(new TaskCancelledError());
-      };
-
-      signal.addEventListener('abort', d1);
+      });
     });
   };
 }

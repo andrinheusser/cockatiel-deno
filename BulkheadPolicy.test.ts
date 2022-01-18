@@ -1,6 +1,6 @@
 import { expect } from 'chai DENOIFY: DEPENDENCY UNMET (DEV DEPENDENCY)';
 import { promisify } from 'https://deno.land/std@0.85.0/node/util.ts';
-import { abortedSignal } from './common/abort.ts';
+import { CancellationToken, CancellationTokenSource } from './CancellationToken.ts';
 import { defer } from './common/defer.ts';
 import { BulkheadRejectedError } from './errors/BulkheadRejectedError.ts';
 import { TaskCancelledError } from './errors/Errors.ts';
@@ -124,14 +124,14 @@ describe('Bulkhead', () => {
     const bulkhead = Policy.bulkhead(1, Infinity);
     const todo: Array<PromiseLike<void>> = [];
     for (let i = 0; i < 3; i++) {
-      const parent = new AbortController();
+      const parent = new CancellationTokenSource();
       todo.push(
-        bulkhead.execute(async ({ signal }) => {
+        bulkhead.execute(async ({ cancellationToken }) => {
           await delay(1);
-          expect(signal.aborted).to.be.false;
-          parent.abort();
-          expect(signal.aborted).to.be.true;
-        }, parent.signal),
+          expect(cancellationToken.isCancellationRequested).to.be.false;
+          parent.cancel();
+          expect(cancellationToken.isCancellationRequested).to.be.true;
+        }, parent.token),
       );
     }
 
@@ -140,18 +140,18 @@ describe('Bulkhead', () => {
       expect(
         bulkhead.execute(() => {
           throw new Error('expected not to call');
-        }, abortedSignal),
+        }, CancellationToken.Cancelled),
       ).to.be.rejectedWith(TaskCancelledError),
     );
 
     // cancelled by the time it gets executed
-    const cancelledCts = new AbortController();
-    setTimeout(() => cancelledCts.abort(), 2);
+    const cancelledCts = new CancellationTokenSource();
+    setTimeout(() => cancelledCts.cancel(), 2);
     todo.push(
       expect(
         bulkhead.execute(() => {
           throw new Error('expected not to call');
-        }, cancelledCts.signal),
+        }, cancelledCts.token),
       ).to.be.rejectedWith(TaskCancelledError),
     );
 

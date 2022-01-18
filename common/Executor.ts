@@ -67,9 +67,8 @@ export class ExecuteWrapper {
       }
 
       return { value };
-    } catch (rawError) {
-      const error = rawError as Error;
-      const handled = this.errorFilter(error as Error);
+    } catch (error) {
+      const handled = this.errorFilter(error);
       if (stopwatch) {
         this.failureEmitter.emit({ duration: stopwatch(), handled, reason: { error } });
       }

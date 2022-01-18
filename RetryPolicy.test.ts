@@ -1,6 +1,7 @@
 import { expect, use } from 'chai DENOIFY: DEPENDENCY UNMET (DEV DEPENDENCY)';
 import { SinonFakeTimers, SinonStub, stub, useFakeTimers } from 'sinon DENOIFY: DEPENDENCY UNMET (DEV DEPENDENCY)';
 import { noJitterGenerator } from './backoff/Backoff.ts';
+import { CancellationTokenSource } from './CancellationToken.ts';
 import { runInChild } from './common/util.test.ts';
 import { Policy } from './Policy.ts';
 import { RetryPolicy } from './RetryPolicy.ts';
@@ -169,20 +170,20 @@ describe('RetryPolicy', () => {
   });
 
   it('stops retries if cancellation is requested', async () => {
-    const parent = new AbortController();
+    const parent = new CancellationTokenSource();
     const err = new Error();
     let calls = 0;
     await expect(
       Policy.handleAll()
         .retry()
         .attempts(3)
-        .execute(({ signal }) => {
+        .execute(({ cancellationToken }) => {
           calls++;
-          expect(signal.aborted).to.be.false;
-          parent.abort();
-          expect(signal.aborted).to.be.true;
+          expect(cancellationToken.isCancellationRequested).to.be.false;
+          parent.cancel();
+          expect(cancellationToken.isCancellationRequested).to.be.true;
           throw err;
-        }, parent.signal),
+        }, parent.token),
     ).to.eventually.be.rejectedWith(err);
     expect(calls).to.equal(1);
   });

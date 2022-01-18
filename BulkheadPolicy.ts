@@ -1,4 +1,4 @@
-import { neverAbortedSignal } from './common/abort.ts';
+import { CancellationToken } from './CancellationToken.ts';
 import { defer } from './common/defer.ts';
 import { EventEmitter } from './common/Event.ts';
 import { ExecuteWrapper } from './common/Executor.ts';
@@ -7,7 +7,7 @@ import { TaskCancelledError } from './errors/Errors.ts';
 import { IDefaultPolicyContext, IPolicy } from './Policy.ts';
 
 interface IQueueItem<T> {
-  signal: AbortSignal;
+  ct: CancellationToken;
   fn(context: IDefaultPolicyContext): Promise<T> | T;
   resolve(value: T): void;
   reject(error: Error): void;
@@ -63,16 +63,16 @@ export class BulkheadPolicy implements IPolicy {
    */
   public async execute<T>(
     fn: (context: IDefaultPolicyContext) => PromiseLike<T> | T,
-    signal = neverAbortedSignal,
+    cancellationToken = CancellationToken.None,
   ): Promise<T> {
-    if (signal.aborted) {
+    if (cancellationToken.isCancellationRequested) {
       throw new TaskCancelledError();
     }
 
     if (this.active < this.capacity) {
       this.active++;
       try {
-        return await fn({ signal });
+        return await fn({ cancellationToken });
       } finally {
         this.active--;
         this.dequeue();
@@ -81,7 +81,7 @@ export class BulkheadPolicy implements IPolicy {
 
     if (this.queue.length < this.queueCapacity) {
       const { resolve, reject, promise } = defer<T>();
-      this.queue.push({ signal, fn, resolve, reject });
+      this.queue.push({ ct: cancellationToken, fn, resolve, reject });
       return promise;
     }
 
@@ -96,7 +96,7 @@ export class BulkheadPolicy implements IPolicy {
     }
 
     Promise.resolve()
-      .then(() => this.execute(item.fn, item.signal))
+      .then(() => this.execute(item.fn, item.ct))
       .then(item.resolve)
       .catch(item.reject);
   }

@@ -1,5 +1,5 @@
 import { IBreaker } from './breaker/Breaker.ts';
-import { neverAbortedSignal } from './common/abort.ts';
+import { CancellationToken } from './CancellationToken.ts';
 import { EventEmitter } from './common/Event.ts';
 import { ExecuteWrapper, returnOrThrow } from './common/Executor.ts';
 import { BrokenCircuitError, TaskCancelledError } from './errors/Errors.ts';
@@ -145,12 +145,12 @@ export class CircuitBreakerPolicy implements IPolicy {
    */
   public async execute<T>(
     fn: (context: IDefaultPolicyContext) => PromiseLike<T> | T,
-    signal = neverAbortedSignal,
+    cancellationToken = CancellationToken.None,
   ): Promise<T> {
     const state = this.innerState;
     switch (state.value) {
       case CircuitState.Closed:
-        const result = await this.executor.invoke(fn, { signal });
+        const result = await this.executor.invoke(fn, { cancellationToken });
         if ('success' in result) {
           this.options.breaker.success(state.value);
         } else {
@@ -164,7 +164,7 @@ export class CircuitBreakerPolicy implements IPolicy {
 
       case CircuitState.HalfOpen:
         await state.test.catch(() => undefined);
-        if (this.state === CircuitState.Closed && signal.aborted) {
+        if (this.state === CircuitState.Closed && cancellationToken.isCancellationRequested) {
           throw new TaskCancelledError();
         }
 
@@ -174,7 +174,7 @@ export class CircuitBreakerPolicy implements IPolicy {
         if (Date.now() - state.openedAt < this.options.halfOpenAfter) {
           throw new BrokenCircuitError();
         }
-        const test = this.halfOpen(fn, signal);
+        const test = this.halfOpen(fn, cancellationToken);
         this.innerState = { value: CircuitState.HalfOpen, test };
         this.stateChangeEmitter.emit(CircuitState.HalfOpen);
         return test;
@@ -189,12 +189,12 @@ export class CircuitBreakerPolicy implements IPolicy {
 
   private async halfOpen<T>(
     fn: (context: IDefaultPolicyContext) => PromiseLike<T> | T,
-    signal: AbortSignal,
+    cancellationToken: CancellationToken,
   ): Promise<T> {
     this.halfOpenEmitter.emit();
 
     try {
-      const result = await this.executor.invoke(fn, { signal });
+      const result = await this.executor.invoke(fn, { cancellationToken });
       if ('success' in result) {
         this.options.breaker.success(CircuitState.HalfOpen);
         this.close();

@@ -1,5 +1,6 @@
 import { expect } from 'chai DENOIFY: DEPENDENCY UNMET (DEV DEPENDENCY)';
 import { stub } from 'sinon DENOIFY: DEPENDENCY UNMET (DEV DEPENDENCY)';
+import { CancellationTokenSource } from './CancellationToken.ts';
 import { Policy } from './Policy.ts';
 
 describe('FallbackPolicy', () => {
@@ -28,13 +29,13 @@ describe('FallbackPolicy', () => {
   });
 
   it('links parent cancellation token', async () => {
-    const parent = new AbortController();
+    const parent = new CancellationTokenSource();
     await Policy.handleAll()
       .fallback('error')
-      .execute(({ signal }) => {
-        expect(signal.aborted).to.be.false;
-        parent.abort();
-        expect(signal.aborted).to.be.true;
-      }, parent.signal);
+      .execute(({ cancellationToken }) => {
+        expect(cancellationToken.isCancellationRequested).to.be.false;
+        parent.cancel();
+        expect(cancellationToken.isCancellationRequested).to.be.true;
+      }, parent.token);
   });
 });

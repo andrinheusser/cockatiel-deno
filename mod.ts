@@ -1,6 +1,7 @@
 export * from './backoff/Backoff.ts';
 export * from './breaker/Breaker.ts';
 export * from './BulkheadPolicy.ts';
+export * from './CancellationToken.ts';
 export * from './CircuitBreakerPolicy.ts';
 export { Event, EventEmitter, IDisposable } from './common/Event.ts';
 export * from './errors/Errors.ts';

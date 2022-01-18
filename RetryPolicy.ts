@@ -8,7 +8,7 @@ import { CompositeBackoff, CompositeBias } from './backoff/CompositeBackoff.ts';
 import { ConstantBackoff } from './backoff/ConstantBackoff.ts';
 import { DelegateBackoff, DelegateBackoffFn } from './backoff/DelegateBackoff.ts';
 import { IterableBackoff } from './backoff/IterableBackoff.ts';
-import { neverAbortedSignal } from './common/abort.ts';
+import { CancellationToken } from './CancellationToken.ts';
 import { EventEmitter } from './common/Event.ts';
 import { ExecuteWrapper } from './common/Executor.ts';
 import { FailureReason, IDefaultPolicyContext, IPolicy } from './Policy.ts';
@@ -143,19 +143,19 @@ export class RetryPolicy implements IPolicy<IRetryContext> {
    */
   public async execute<T>(
     fn: (context: IRetryContext) => PromiseLike<T> | T,
-    signal = neverAbortedSignal,
+    cancellationToken = CancellationToken.None,
   ): Promise<T> {
     const factory: IBackoffFactory<IRetryBackoffContext<unknown>> =
       this.options.backoff || new ConstantBackoff(0, 1);
     let backoff: IBackoff<IRetryBackoffContext<unknown>> | undefined;
     for (let retries = 0; ; retries++) {
-      const result = await this.executor.invoke(fn, { attempt: retries, signal });
+      const result = await this.executor.invoke(fn, { attempt: retries, cancellationToken });
       if ('success' in result) {
         return result.success;
       }
 
-      if (!signal.aborted) {
-        const context = { attempt: retries + 1, signal, result };
+      if (!cancellationToken.isCancellationRequested) {
+        const context = { attempt: retries + 1, cancellationToken, result };
         if (retries === 0) {
           backoff = factory.next(context);
         } else if (backoff) {

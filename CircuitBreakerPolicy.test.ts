@@ -2,8 +2,8 @@ import { expect } from 'chai DENOIFY: DEPENDENCY UNMET (DEV DEPENDENCY)';
 import { SinonFakeTimers, SinonStub, stub, useFakeTimers } from 'sinon DENOIFY: DEPENDENCY UNMET (DEV DEPENDENCY)';
 import { promisify } from 'https://deno.land/std@0.85.0/node/util.ts';
 import { ConsecutiveBreaker } from './breaker/Breaker.ts';
+import { CancellationToken, CancellationTokenSource } from './CancellationToken.ts';
 import { CircuitBreakerPolicy, CircuitState } from './CircuitBreakerPolicy.ts';
-import { abortedSignal } from './common/abort.ts';
 import { BrokenCircuitError, TaskCancelledError } from './errors/Errors.ts';
 import { IsolatedCircuitError } from './errors/IsolatedCircuitError.ts';
 import { Policy } from './Policy.ts';
@@ -161,14 +161,14 @@ describe('CircuitBreakerPolicy', () => {
   });
 
   it('links parent cancellation token', async () => {
-    const parent = new AbortController();
+    const parent = new CancellationTokenSource();
     await Policy.handleAll()
       .circuitBreaker(1000, new ConsecutiveBreaker(3))
-      .execute(({ signal }) => {
-        expect(signal.aborted).to.be.false;
-        parent.abort();
-        expect(signal.aborted).to.be.true;
-      }, parent.signal);
+      .execute(({ cancellationToken }) => {
+        expect(cancellationToken.isCancellationRequested).to.be.false;
+        parent.cancel();
+        expect(cancellationToken.isCancellationRequested).to.be.true;
+      }, parent.token);
   });
 
   it('aborts function execution if half open test succeeds', async () => {
@@ -180,7 +180,9 @@ describe('CircuitBreakerPolicy', () => {
     p.execute(stub().resolves(42));
 
     // queued timeout:
-    await expect(p.execute(stub(), abortedSignal)).to.be.rejectedWith(TaskCancelledError);
+    await expect(p.execute(stub(), CancellationToken.Cancelled)).to.be.rejectedWith(
+      TaskCancelledError,
+    );
 
     expect(p.state).to.equal(CircuitState.Closed);
     expect(onReset).calledOnce;
